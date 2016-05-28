@@ -1,0 +1,15 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+    <interface name="org.jonatan.Contejner.Container">
+        <method name="Run">
+            <arg name="error_code" direction="out" type="i"></arg>
+            <arg name="name" direction="out" type="s"></arg>
+        </method>
+
+        <method name="SetCommand">
+            <arg name="command" direction="in" type="s"></arg>
+            <arg name="arguments" direction="in" type="as"></arg>
+        </method>
+  </interface>
+</node>
