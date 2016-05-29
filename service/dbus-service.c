@@ -58,21 +58,18 @@ int main (int argc, char *argv[])
     GBusNameOwnerFlags flags;
     gboolean opt_replace;
     gboolean opt_allow_replacement;
-    gchar *opt_name;
     GOptionContext *opt_context;
     GError *error;
     GOptionEntry opt_entries[] =
     {
         { "replace", 'r', 0, G_OPTION_ARG_NONE, &opt_replace, "Replace existing name if possible", NULL },
         { "allow-replacement", 'a', 0, G_OPTION_ARG_NONE, &opt_allow_replacement, "Allow replacement", NULL },
-        { "name", 'n', 0, G_OPTION_ARG_STRING, &opt_name, "Name to acquire", NULL },
         { NULL}
     };
     ContejnerManager *manager;
 
 
     error = NULL;
-    opt_name = NULL;
     opt_replace = FALSE;
     opt_allow_replacement = FALSE;
     opt_context = g_option_context_new ("g_bus_own_name() example");
@@ -80,11 +77,6 @@ int main (int argc, char *argv[])
     if (!g_option_context_parse (opt_context, &argc, &argv, &error))
     {
         g_printerr ("Error parsing options: %s", error->message);
-        return 1;
-    }
-    if (opt_name == NULL)
-    {
-        g_printerr ("Incorrect usage, try --help.\n");
         return 1;
     }
 
@@ -100,7 +92,7 @@ int main (int argc, char *argv[])
     }
 
     owner_id = g_bus_own_name (G_BUS_TYPE_SESSION,
-                               opt_name,
+                               CONTEJNER_MANAGER_INTERFACE_DBUS_NAME,
                                flags,
                                on_bus_acquired,
                                on_name_acquired,
