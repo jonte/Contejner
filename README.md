@@ -3,6 +3,10 @@ Contejner
 
 This is an attempt to put an easy-to-use D-Bus interface on top of Linux namespaces and cgroups ("containers").
 
+How does it look?
+=================
+![screenshot](screenshot.png)
+
 What works
 ==========
 Service
