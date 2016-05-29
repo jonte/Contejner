@@ -4,6 +4,7 @@
  */
 
 #include "contejner-instance-interface.h"
+#include <gio/gunixfdlist.h>
 
 struct _ContejnerInstanceInterface
 {
@@ -92,6 +93,15 @@ static void dbus_method_call(GDBusConnection *connection,
         }
 
         g_dbus_method_invocation_return_value (invocation, NULL);
+    } else if (!g_strcmp0(method_name, "Connect")) {
+        int fds[2] = { 0 };
+        fds[0] = contejner_instance_get_stdout(priv->container);
+        fds[1] = contejner_instance_get_stderr(priv->container);
+
+        GUnixFDList *fd_list = g_unix_fd_list_new_from_array(fds, 2);
+        g_dbus_method_invocation_return_value_with_unix_fd_list (invocation,
+                                                                 NULL,
+                                                                 fd_list);
     }
 }
 

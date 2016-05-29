@@ -11,9 +11,14 @@
 #include <sched.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 #define CONTAINER_NAME_SZ 20
 #define STACK_SIZE 1024 * 1024
+#define STDOUT_BUF_SZ 1024
+#define STDERR_BUF_SZ 1024
 
 /* List of namesapces to unshare */
 #define DEFAULT_UNSHARED_NAMESPACES     \
@@ -39,6 +44,8 @@ struct mount {
 };
 
 struct _ContejnerInstancePrivate {
+    gint stderr_fd;
+    gint stdout_fd;
     int id;
     char name[CONTAINER_NAME_SZ];
     char *command;
@@ -47,6 +54,8 @@ struct _ContejnerInstancePrivate {
     char *stack;
     int unshared_namespaces;
     GSList *mounts;
+    char stdout_buf[STDOUT_BUF_SZ];
+    char stderr_buf[STDERR_BUF_SZ];
 };
 
 #define CONTEJNER_INSTANCE_GET_PRIVATE(object)                           \
@@ -68,12 +77,23 @@ static void contejner_instance_init (ContejnerInstance *svc) {
 
 static void contejner_instance_class_init (ContejnerInstanceClass *class)
 {
-    g_type_class_add_private(class, sizeof(ContejnerInstance));
+    g_type_class_add_private(class, sizeof(ContejnerInstancePrivate));
 }
 
 static int child_func (void *arg) {
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(arg);
     int status;
+
+    /* Set up stdout & stderr */
+    if (close(STDOUT_FILENO)) { g_error ("Failed to close stdout in child"); }
+    if (dup2(priv->stdout_fd, STDOUT_FILENO) == -1) {
+        g_error ("Failed to dup stdout");
+    }
+
+    if (close(STDERR_FILENO)) { g_error ("Failed to close stderr in child"); }
+    if (dup2(priv->stderr_fd, STDERR_FILENO) == -1) {
+        g_error ("Failed to dup stderr");
+    }
 
     /* Change the root directory */
     if ((status = chroot(priv->rootfs_path))) {
@@ -91,7 +111,28 @@ static int child_func (void *arg) {
 ContejnerInstance * contejner_instance_new (int id)
 {
     ContejnerInstance *instance = g_object_new (CONTEJNER_TYPE_INSTANCE, NULL);
-    CONTEJNER_INSTANCE_GET_PRIVATE (instance)->id = id;
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE (instance);
+
+    priv->id = id;
+
+    gchar *stdout_fname = g_strdup_printf("/stdout-%d-%d",getpid(),id);
+    gchar *stderr_fname = g_strdup_printf("/stderr-%d-%d",getpid(),id);
+
+    priv->stdout_fd = shm_open(stdout_fname,
+                               O_CREAT | O_RDWR | O_EXCL,
+                               S_IRUSR | S_IWUSR);
+    if (priv->stdout_fd == -1) {
+        g_error("Failed to create stdout buffer for container");
+    }
+    priv->stderr_fd = shm_open(stderr_fname,
+                               O_CREAT | O_RDWR | O_EXCL,
+                               S_IRUSR | S_IWUSR);
+    if (priv->stderr_fd == -1) {
+        g_error("Failed to create stderr buffer for container");
+    }
+
+    g_free(stdout_fname);
+    g_free(stderr_fname);
 
     return instance;
 }
@@ -150,4 +191,20 @@ gboolean contejner_instance_set_command (ContejnerInstance *instance,
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
     priv->command = g_strdup(command);
     priv->command_args = g_strdupv((char **)args);
+}
+
+gint contejner_instance_get_stdout(const ContejnerInstance *instance)
+{
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
+    int fd = dup(priv->stdout_fd);
+    lseek(fd, 0, SEEK_SET);
+    return fd;
+}
+
+gint contejner_instance_get_stderr(const ContejnerInstance *instance)
+{
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
+    int fd = dup(priv->stderr_fd);
+    lseek(fd, 0, SEEK_SET);
+    return fd;
 }

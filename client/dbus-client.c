@@ -1,5 +1,11 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <gio/gio.h>
+#include <gio/gunixfdlist.h>
+#include <string.h>
+#include <signal.h>
+#include <poll.h>
+#include <fcntl.h>
 
 struct client {
     GDBusProxy *manager_proxy;
@@ -9,10 +15,65 @@ struct client {
     gchar **exec_command_args;
     gboolean do_list;
     gboolean do_create;
+    gboolean do_connect;
     gchar *container_name;
+    gint stdout_fd;
+    gint stderr_fd;
 };
 
-static gboolean open (struct client *client)
+static void connect (struct client *client)
+{
+    GError *error = NULL;
+    gchar *command = g_strdup_printf("%s.Connect", client->container_name);
+    GUnixFDList *fd_list = NULL;
+
+    g_dbus_proxy_call_with_unix_fd_list_sync (client->container_proxy,
+                                              command,
+                                              NULL,
+                                              G_DBUS_PROXY_FLAGS_NONE,
+                                              -1,
+                                              NULL,
+                                              &fd_list,
+                                              NULL,
+                                              &error);
+    g_free (command);
+    if (error) {
+        g_error("Failed to call Connect");
+    }
+
+    if (g_unix_fd_list_get_length(fd_list) != 2) {
+        g_error ("Received invalid fd list");
+    }
+    client->stdout_fd = g_unix_fd_list_get(fd_list, 0, &error);
+    if (error) { g_error ("Failed to get file descriptor"); }
+
+    client->stderr_fd = g_unix_fd_list_get(fd_list, 1, &error);
+    if (error) { g_error ("Failed to get file descriptor"); }
+
+    char buf[1024] = { 0 };
+    int flags = fcntl(client->stdout_fd, F_GETFL, 0);
+    fcntl(client->stdout_fd, F_SETFL, flags | O_NONBLOCK);
+    flags = fcntl(client->stderr_fd, F_GETFL, 0);
+    fcntl(client->stderr_fd, F_SETFL, flags | O_NONBLOCK);
+    int fds[] = {client->stdout_fd, client->stderr_fd};
+    char *fds_begin_text[] = {"\x1b[32m","\x1b[31m"};
+    char *fds_end_text[] = {"\x1b[0m", "\x1b[0m"};
+
+    while(TRUE) {
+        int i = 0;
+        for (i = 0; i < sizeof(fds) / sizeof(fds[0]); i++) {
+            int fd = fds[i];
+            int r = read(fd, buf, 1023);
+            if (r) {
+                buf[r] = '\0';
+                printf("%s%s%s", fds_begin_text[i], buf, fds_end_text[i]);
+                fflush(stdout);
+            }
+        }
+    }
+}
+
+static gboolean open_container (struct client *client)
 {
     GError *error = NULL;
     client->container_proxy =
@@ -79,7 +140,6 @@ static void run (struct client *client)
 {
     GError *error = NULL;
     gchar *command = g_strdup_printf("%s.Run", client->container_name);
-    g_print("Command is %s", command);
     g_dbus_proxy_call_sync (client->container_proxy,
                             command,
                             NULL,
@@ -160,9 +220,12 @@ static void proxy_ready (GObject *source_object,
             client->container_name = create(client);
         }
 
-        open(client);
+        open_container(client);
         set_command(client);
         run(client);
+    } if (client->do_connect) {
+        open_container(client);
+        connect (client);
     }
 
     g_main_loop_quit(client->loop);
@@ -186,6 +249,7 @@ int main(int argc, char **argv) {
         { "list", 'l', 0, G_OPTION_ARG_NONE, &client.do_list, "List available containers", NULL },
         { "new", 'n', 0, G_OPTION_ARG_NONE, &client.do_create, "Create new container", NULL },
         { "container", 'c', 0, G_OPTION_ARG_STRING, &container_name, "Container to operate on", NULL },
+        { "connect-output", 'o', 0, G_OPTION_ARG_NONE, &client.do_connect, "Connect to stdout & stderr on container", NULL },
         { NULL }
     };
 

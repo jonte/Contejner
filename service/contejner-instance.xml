@@ -11,5 +11,7 @@
             <arg name="command" direction="in" type="s"></arg>
             <arg name="arguments" direction="in" type="as"></arg>
         </method>
+
+        <method name="Connect"> </method>
   </interface>
 </node>
