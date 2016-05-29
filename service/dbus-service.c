@@ -41,14 +41,14 @@ static void on_name_acquired (GDBusConnection *connection,
                               const gchar     *name,
                               gpointer         user_data)
 {
-    g_print ("Acquired the name %s on the session bus\n", name);
+    g_debug ("Acquired the name %s on the session bus", name);
 }
 
 static void on_name_lost (GDBusConnection *connection,
                           const gchar     *name,
                           gpointer         user_data)
 {
-    g_print ("Lost the name %s on the session bus\n", name);
+    g_debug ("Lost the name %s on the session bus", name);
 }
 
 int main (int argc, char *argv[])
@@ -88,7 +88,7 @@ int main (int argc, char *argv[])
 
     manager = contejner_manager_new();
     if (!manager) {
-        g_error ("Failed to create container manager\n");
+        g_error ("Failed to create container manager");
     }
 
     owner_id = g_bus_own_name (G_BUS_TYPE_SESSION,
