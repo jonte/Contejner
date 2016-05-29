@@ -66,8 +66,11 @@ void contejner_manager_create (ContejnerManager *manager,
     ContejnerInstance *container;
     int id = priv->next_container_id++;
 
-    g_debug("Creating new container with ID: %d", id);
     container = contejner_instance_new(id);
+    GValue v = G_VALUE_INIT;
+    g_value_init(&v, G_TYPE_STRING);
+    g_object_get_property(G_OBJECT(container), "name", &v);
+    g_debug("Container created: %s", g_value_get_string(&v));
 
     if (!container) {
         g_error ("Failed to allocate memory for container");

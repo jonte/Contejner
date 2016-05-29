@@ -34,13 +34,7 @@ void contejner_instance_run (ContejnerInstance *instance,
                              ContejnerInstanceRunCallback cb,
                              gpointer user_data);
 
-const char *contejner_instance_get_name(const ContejnerInstance *instance);
-gint contejner_instance_get_stdout(const ContejnerInstance *instance);
-gint contejner_instance_get_stderr(const ContejnerInstance *instance);
 int contejner_instance_get_id(const ContejnerInstance *instance);
-
-void contejner_instance_set_name(ContejnerInstance *instance,
-                                 const char *name);
 
 gboolean contejner_instance_set_command(ContejnerInstance *instance,
                                         const gchar *command,

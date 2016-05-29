@@ -93,8 +93,13 @@ static void dbus_method_call(GDBusConnection *connection,
         g_dbus_method_invocation_return_value (invocation, NULL);
     } else if (!g_strcmp0(method_name, "Connect")) {
         int fds[2] = { 0 };
-        fds[0] = contejner_instance_get_stdout(priv->container);
-        fds[1] = contejner_instance_get_stderr(priv->container);
+        GValue v = G_VALUE_INIT;
+        g_value_init(&v, G_TYPE_INT);
+        g_object_get_property(G_OBJECT(priv->container), "stderr", &v);
+        fds[1] = g_value_get_int(&v);
+
+        g_object_get_property(G_OBJECT(priv->container), "stdout", &v);
+        fds[0] = g_value_get_int(&v);
 
         GUnixFDList *fd_list = g_unix_fd_list_new_from_array(fds, 2);
         g_dbus_method_invocation_return_value_with_unix_fd_list (invocation,

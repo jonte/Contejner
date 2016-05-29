@@ -58,6 +58,16 @@ struct _ContejnerInstancePrivate {
     char stderr_buf[STDERR_BUF_SZ];
 };
 
+enum {
+    PROP_0,
+    PROP_NAME,
+    PROP_STDERR,
+    PROP_STDOUT,
+    PROP_LAST
+};
+
+static GParamSpec *obj_properties[PROP_LAST] = { NULL, };
+
 #define CONTEJNER_INSTANCE_GET_PRIVATE(object)                           \
           (G_TYPE_INSTANCE_GET_PRIVATE((object),                       \
                                        contejner_instance_get_type(),    \
@@ -66,6 +76,59 @@ struct _ContejnerInstancePrivate {
 G_DEFINE_TYPE(ContejnerInstance,
               contejner_instance,
               G_TYPE_OBJECT)
+
+
+static void contejner_instance_get_property (GObject *object,
+                                             guint property_id,
+                                             GValue *value,
+                                             GParamSpec *pspec)
+{
+    ContejnerInstance *self = CONTEJNER_INSTANCE (object);
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(self);
+
+    switch (property_id) {
+        case PROP_NAME:
+            g_value_set_string (value, priv->name);
+            break;
+        case PROP_STDERR: {
+            int fd = dup(priv->stderr_fd);
+            lseek(fd, 0, SEEK_SET);
+            g_value_set_int(value, fd);
+            break;
+        } case PROP_STDOUT: {
+            int fd = dup(priv->stdout_fd);
+            lseek(fd, 0, SEEK_SET);
+            g_value_set_int(value, fd);
+            break;
+        } default: {
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+        }
+    }
+}
+
+static void contejner_instance_set_property (GObject *object,
+                                             guint property_id,
+                                             const GValue *value,
+                                             GParamSpec *pspec)
+{
+    ContejnerInstance *self = CONTEJNER_INSTANCE(object);
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(self);
+
+    switch (property_id) {
+        case PROP_NAME: {
+            const gchar *v = g_value_get_string(value);
+            int strl = strlen(v);
+            if (strl >= CONTAINER_NAME_SZ) {
+                g_warning ("Container name too long");
+            } else {
+                memcpy(priv->name, v, strlen(v));
+            }
+            break;
+        } default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+
+    }
+}
 
 static void contejner_instance_init (ContejnerInstance *svc) {
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE (svc);
@@ -77,7 +140,35 @@ static void contejner_instance_init (ContejnerInstance *svc) {
 
 static void contejner_instance_class_init (ContejnerInstanceClass *class)
 {
+    GObjectClass *object_class = G_OBJECT_CLASS (class);
     g_type_class_add_private(class, sizeof(ContejnerInstancePrivate));
+
+    object_class->set_property = contejner_instance_set_property;
+    object_class->get_property = contejner_instance_get_property;
+
+    obj_properties[PROP_NAME] =
+        g_param_spec_string ("name",
+                             "Name",
+                             "Display name of this container",
+                             NULL  /* default value */,
+                             G_PARAM_READWRITE);
+
+    obj_properties[PROP_STDERR] =
+        g_param_spec_int ("stderr", "stderr fd", "stderr file descriptor",
+                          -1, G_MAXINT,
+                          0,
+                          G_PARAM_READWRITE);
+
+    obj_properties[PROP_STDOUT] =
+        g_param_spec_int ("stdout", "stdout fd", "stout file descriptor",
+                          -1, G_MAXINT,
+                          0,
+                          G_PARAM_READWRITE);
+
+    g_object_class_install_properties (object_class,
+                                       PROP_LAST,
+                                       obj_properties);
+
 }
 
 static int child_func (void *arg) {
@@ -136,6 +227,8 @@ ContejnerInstance * contejner_instance_new (int id)
     g_free(stdout_fname);
     g_free(stderr_fname);
 
+    g_snprintf(priv->name,CONTAINER_NAME_SZ,"Container %d", id);
+
     return instance;
 }
 
@@ -167,23 +260,10 @@ contejner_instance_run_return:
         cb (instance, error, message, user_data);
 }
 
-const gchar *contejner_instance_get_name (const ContejnerInstance *instance)
-{
-    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
-    return priv->name;
-}
-
 int contejner_instance_get_id (const ContejnerInstance *instance)
 {
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
     return priv->id;
-}
-
-void contejner_instance_set_name (ContejnerInstance *instance,
-                                  const gchar *name)
-{
-    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
-    g_snprintf(priv->name, CONTAINER_NAME_SZ, name);;
 }
 
 gboolean contejner_instance_set_command (ContejnerInstance *instance,
@@ -202,20 +282,4 @@ gboolean contejner_instance_set_command (ContejnerInstance *instance,
     }
 
     return TRUE;
-}
-
-gint contejner_instance_get_stdout(const ContejnerInstance *instance)
-{
-    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
-    int fd = dup(priv->stdout_fd);
-    lseek(fd, 0, SEEK_SET);
-    return fd;
-}
-
-gint contejner_instance_get_stderr(const ContejnerInstance *instance)
-{
-    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
-    int fd = dup(priv->stderr_fd);
-    lseek(fd, 0, SEEK_SET);
-    return fd;
 }
