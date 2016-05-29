@@ -63,15 +63,15 @@ void contejner_manager_create (ContejnerManager *manager,
                                gpointer user_data)
 {
     ContejnerManagerPrivate *priv = CONTEJNER_MANAGER_GET_PRIVATE(manager);
+    ContejnerInstance *container;
     int id = priv->next_container_id++;
-    ContejnerInstance *container = contejner_instance_new(id);
-    gchar container_name[CONTAINER_NAME_SZ] = { 0 };
+
+    g_debug("Creating new container with ID: %d", id);
+    container = contejner_instance_new(id);
 
     if (!container) {
         g_error ("Failed to allocate memory for container");
     }
-
-    g_debug("Creating new container with ID: %d", id);
 
     priv->container_list = g_slist_append(priv->container_list, container);
 

@@ -16,7 +16,7 @@ SET (SOURCES
      contejner-instance.c
      contejner-instance-interface.c)
 
- #ADD_DEFINITIONS(-Wall -Werror)
+ADD_DEFINITIONS(-Wall -Werror)
 
 INCLUDE_DIRECTORIES (${GLIB_INCLUDE_DIRS})
 

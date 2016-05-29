@@ -34,8 +34,6 @@ static void container_created_cb (ContejnerInstance *c, gpointer user_data)
     ContejnerManagerInterfacePrivate *priv = CONTEJNER_MANAGER_INTERFACE_GET_PRIVATE(self);
     GDBusMethodInvocation *m = ((void**)user_data)[1];
 
-    int id = contejner_instance_get_id(c);
-
     ContejnerInstanceInterface *container_interface =
         contejner_instance_interface_new (c);
 
@@ -46,17 +44,6 @@ static void container_created_cb (ContejnerInstance *c, gpointer user_data)
         contejner_instance_interface_get_dbus_interface(container_interface);
 
     GVariant *value = g_variant_new("(s)", i);
-    g_variant_ref(value);
-    g_dbus_method_invocation_return_value (m, value);
-    g_variant_unref(value);
-}
-
-static void container_running_cb (enum contejner_error_code error,
-                                  const char *message,
-                                  gpointer user_data)
-{
-    GDBusMethodInvocation *m = user_data;
-    GVariant *value = g_variant_new("(is)", error, message);
     g_variant_ref(value);
     g_dbus_method_invocation_return_value (m, value);
     g_variant_unref(value);
@@ -89,7 +76,9 @@ static GVariant *dbus_get_property (GDBusConnection *connection,
                              const gchar *property_name,
                              GError **error,
                              gpointer user_data)
-{}
+{
+    return NULL;
+}
 
 static gboolean dbus_set_property (GDBusConnection *connection,
                              const gchar *sender,
@@ -100,6 +89,7 @@ static gboolean dbus_set_property (GDBusConnection *connection,
                              GError **error,
                              gpointer user_data)
 {
+    return FALSE;
 }
 
 static GDBusInterfaceVTable dbus_interface_vtable = {
@@ -120,7 +110,6 @@ static void load_node_info(ContejnerManagerInterface *svc) {
     GError *error = NULL;
     GDBusNodeInfo *node_info = NULL;
     GDBusInterfaceInfo *interface_info = NULL;
-    GDBusInterfaceInfo interface_info_copy;
 
     if (!g_file_get_contents(CONTEJNER_MANAGER_INTERFACE_XML,
                              &introspection_xml,
@@ -137,7 +126,7 @@ static void load_node_info(ContejnerManagerInterface *svc) {
     }
 
     interface_info = g_dbus_node_info_lookup_interface (
-                                        node_info, CONTEJNER_MANAGER_INTERFACE_DBUS_NAME);
+                            node_info, CONTEJNER_MANAGER_INTERFACE_DBUS_NAME);
     if (!interface_info) {
         g_error ("Failed to find interface '%s' in file '%s'",
                  CONTEJNER_MANAGER_INTERFACE_DBUS_NAME,

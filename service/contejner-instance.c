@@ -82,7 +82,7 @@ static void contejner_instance_class_init (ContejnerInstanceClass *class)
 
 static int child_func (void *arg) {
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(arg);
-    int status;
+    int status = 0;
 
     /* Set up stdout & stderr */
     if (close(STDOUT_FILENO)) { g_error ("Failed to close stdout in child"); }
@@ -106,6 +106,8 @@ static int child_func (void *arg) {
         perror("exec");
         return status;
     }
+
+    return status;
 }
 
 ContejnerInstance * contejner_instance_new (int id)
@@ -190,7 +192,16 @@ gboolean contejner_instance_set_command (ContejnerInstance *instance,
 {
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
     priv->command = g_strdup(command);
+    if (!priv->command) {
+        return FALSE;
+    }
+
     priv->command_args = g_strdupv((char **)args);
+    if (!priv->command_args) {
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 gint contejner_instance_get_stdout(const ContejnerInstance *instance)

@@ -31,8 +31,6 @@ static void container_running_cb(ContejnerInstance *container,
                                  const char *message,
                                  gpointer user_data)
 {
-    ContejnerInstanceInterface *iface =
-        CONTEJNER_INSTANCE_INTERFACE(((void **)user_data)[0]);
     GDBusMethodInvocation *invocation =
         G_DBUS_METHOD_INVOCATION(((void **)user_data)[1]);
 
@@ -112,7 +110,9 @@ static GVariant *dbus_get_property (GDBusConnection *connection,
                              const gchar *property_name,
                              GError **error,
                              gpointer user_data)
-{}
+{
+    return NULL;
+}
 
 static gboolean dbus_set_property (GDBusConnection *connection,
                              const gchar *sender,
@@ -123,6 +123,7 @@ static gboolean dbus_set_property (GDBusConnection *connection,
                              GError **error,
                              gpointer user_data)
 {
+    return FALSE;
 }
 
 static GDBusInterfaceVTable dbus_interface_vtable = {
@@ -146,7 +147,6 @@ static void load_node_info(ContejnerInstanceInterface *svc) {
     GError *error = NULL;
     GDBusNodeInfo *node_info = NULL;
     GDBusInterfaceInfo *interface_info = NULL;
-    GDBusInterfaceInfo interface_info_copy;
 
     if (!g_file_get_contents(CONTEJNER_INSTANCE_INTERFACE_XML,
                              &introspection_xml,
@@ -192,10 +192,7 @@ static GDBusInterfaceVTable *get_vtable (GDBusInterfaceSkeleton  *interface_)
 static GVariant *get_properties (GDBusInterfaceSkeleton  *interface_)
 {
     GVariantDict dict;
-    guint32 count;
-
     g_variant_dict_init (&dict, NULL);
-
     return g_variant_dict_end (&dict);
 }
 
