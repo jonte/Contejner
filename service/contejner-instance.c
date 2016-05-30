@@ -56,6 +56,7 @@ struct _ContejnerInstancePrivate {
     GSList *mounts;
     char stdout_buf[STDOUT_BUF_SZ];
     char stderr_buf[STDERR_BUF_SZ];
+    ContejnerInstanceStatus status;
 };
 
 enum {
@@ -63,6 +64,7 @@ enum {
     PROP_NAME,
     PROP_STDERR,
     PROP_STDOUT,
+    PROP_STATUS,
     PROP_LAST
 };
 
@@ -99,6 +101,9 @@ static void contejner_instance_get_property (GObject *object,
             int fd = dup(priv->stdout_fd);
             lseek(fd, 0, SEEK_SET);
             g_value_set_int(value, fd);
+            break;
+        } case PROP_STATUS: {
+            g_value_set_int(value, priv->status);
             break;
         } default: {
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -164,6 +169,12 @@ static void contejner_instance_class_init (ContejnerInstanceClass *class)
                           -1, G_MAXINT,
                           0,
                           G_PARAM_READWRITE);
+
+    obj_properties[PROP_STATUS] =
+        g_param_spec_int ("status", "container status", "Container status",
+                          0, CONTEJNER_INSTANCE_STATUS_LAST - 1,
+                          0,
+                          G_PARAM_READABLE);
 
     g_object_class_install_properties (object_class,
                                        PROP_LAST,
@@ -243,6 +254,7 @@ void contejner_instance_run (ContejnerInstance *instance,
     if (!priv->command || !priv->command_args) {
         message = "No command supplied";
         error = CONTEJNER_ERR_FAILED_TO_START;
+        priv->status = CONTEJNER_INSTANCE_STATUS_STOPPED;
         goto contejner_instance_run_return;
     }
 
@@ -253,10 +265,15 @@ void contejner_instance_run (ContejnerInstance *instance,
     if (child_pid == -1) {
         message = "Error from clone() call";
         error = CONTEJNER_ERR_FAILED_TO_START;
+        priv->status = CONTEJNER_INSTANCE_STATUS_STOPPED;
         goto contejner_instance_run_return;
     }
 
+    priv->status = CONTEJNER_INSTANCE_STATUS_RUNNING;
+
 contejner_instance_run_return:
+        g_object_notify_by_pspec(G_OBJECT(instance),
+                                 obj_properties[PROP_STATUS]);
         cb (instance, error, message, user_data);
 }
 
@@ -282,4 +299,23 @@ gboolean contejner_instance_set_command (ContejnerInstance *instance,
     }
 
     return TRUE;
+}
+
+gboolean contejner_instance_set_root(ContejnerInstance *instance,
+                                     const GFile *path)
+{
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
+    if (priv->status == CONTEJNER_INSTANCE_STATUS_RUNNING) {
+        g_warning ("Container already running");
+        return FALSE;
+    }
+
+    if (g_file_query_exists((GFile *)path, NULL)) {
+        priv->rootfs_path = g_file_get_path ((GFile *)path);
+        return TRUE;
+    } else {
+        g_warning ("Path does not exist: %s", g_file_get_path ((GFile *)path));
+    }
+
+    return FALSE;
 }

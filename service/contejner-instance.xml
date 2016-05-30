@@ -13,5 +13,8 @@
         </method>
 
         <method name="Connect"> </method>
+        <method name="SetRoot">
+            <arg name="root" direction="in" type="s"></arg>
+        </method>
   </interface>
 </node>

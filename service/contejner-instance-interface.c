@@ -105,6 +105,39 @@ static void dbus_method_call(GDBusConnection *connection,
         g_dbus_method_invocation_return_value_with_unix_fd_list (invocation,
                                                                  NULL,
                                                                  fd_list);
+    } else if (!g_strcmp0(method_name, "SetRoot")) {
+        GValue status = G_VALUE_INIT;
+        gchar *path = NULL;
+        g_value_init(&status, G_TYPE_INT);
+        const char *m = g_dbus_method_invocation_get_method_name (invocation);
+        char *func = NULL, *error = NULL;
+
+        g_object_get_property(G_OBJECT(priv->container), "status", &status);
+
+        if (g_value_get_int(&status) == CONTEJNER_INSTANCE_STATUS_RUNNING) {
+            func = g_strdup_printf("%s.Error.AlreadyRunning", m);
+            error = "Container already running";
+            goto setroot_error;
+        }
+
+        g_variant_get(parameters, "(s)", &path);
+
+        GFile *f = g_file_new_for_path(path);
+        gboolean ok = contejner_instance_set_root(priv->container, f);
+        g_object_unref(f);
+
+        if (ok) {
+            g_dbus_method_invocation_return_value (invocation, NULL);
+            return;
+        } else {
+            func = g_strdup_printf("%s.Error.BadRoot", m);
+            error = "Path does not exist";
+        }
+setroot_error:
+        g_dbus_method_invocation_return_dbus_error(invocation,
+                                                   func,
+                                                   error);
+        g_free(func);
     }
 }
 

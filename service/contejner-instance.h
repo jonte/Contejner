@@ -20,6 +20,13 @@ G_DECLARE_FINAL_TYPE(ContejnerInstance,
                      CONTEJNER,
                      INSTANCE, GObject)
 
+typedef enum {
+    CONTEJNER_INSTANCE_STATUS_RUNNING,
+    CONTEJNER_INSTANCE_STATUS_STOPPED,
+    CONTEJNER_INSTANCE_STATUS_CREATED,
+    CONTEJNER_INSTANCE_STATUS_LAST,
+} ContejnerInstanceStatus;
+
 /* Callbacks */
 typedef void (*ContejnerInstanceRunCallback)(ContejnerInstance *container,
                                              enum contejner_error_code,
@@ -39,6 +46,9 @@ int contejner_instance_get_id(const ContejnerInstance *instance);
 gboolean contejner_instance_set_command(ContejnerInstance *instance,
                                         const gchar *command,
                                         const gchar **args);
+
+gboolean contejner_instance_set_root(ContejnerInstance *instance,
+                                     const GFile *path);
 
 G_END_DECLS
 
