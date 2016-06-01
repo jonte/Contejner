@@ -217,6 +217,7 @@ ContejnerInstance * contejner_instance_new (int id)
     ContejnerInstance *instance = g_object_new (CONTEJNER_TYPE_INSTANCE, NULL);
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE (instance);
 
+    priv->status = CONTEJNER_INSTANCE_STATUS_CREATED;
     priv->id = id;
 
     gchar *stdout_fname = g_strdup_printf("/stdout-%d-%d",getpid(),id);
