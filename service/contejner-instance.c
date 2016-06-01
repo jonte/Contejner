@@ -12,6 +12,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "contejner-instance.h"
 #include "contejner-common.h"
@@ -58,6 +60,7 @@ struct _ContejnerInstancePrivate {
     char stdout_buf[STDOUT_BUF_SZ];
     char stderr_buf[STDERR_BUF_SZ];
     ContejnerInstanceStatus status;
+    pid_t pid;
 };
 
 enum {
@@ -80,6 +83,26 @@ G_DEFINE_TYPE(ContejnerInstance,
               contejner_instance,
               G_TYPE_OBJECT)
 
+
+static gboolean reaper(gpointer data)
+{
+    ContejnerInstance *self = CONTEJNER_INSTANCE(data);
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(self);
+
+    int status = 0;
+    pid_t child_pid = waitpid(priv->pid, &status, WNOHANG);
+    if (child_pid > 0) {
+        if WIFEXITED(status) {
+            g_debug("Child exited with status: %d", WEXITSTATUS(status));
+        }
+
+        priv->status = CONTEJNER_INSTANCE_STATUS_STOPPED;
+        g_object_notify_by_pspec(G_OBJECT(self),
+                                 obj_properties[PROP_STATUS]);
+    }
+
+    return G_SOURCE_CONTINUE;
+}
 
 static void contejner_instance_get_property (GObject *object,
                                              guint property_id,
@@ -272,6 +295,7 @@ void contejner_instance_run (ContejnerInstance *instance,
     }
 
     priv->status = CONTEJNER_INSTANCE_STATUS_RUNNING;
+    g_idle_add(reaper, instance);
 
 contejner_instance_run_return:
         g_object_notify_by_pspec(G_OBJECT(instance),
