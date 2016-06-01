@@ -28,7 +28,7 @@
 #endif
 
 #ifndef CONTEJNER_INSTANCE_INTERFACE_PATH
-#define CONTEJNER_INSTANCE_INTERFACE_PATH "/org/jonatan/Contejner/Container"
+#define CONTEJNER_INSTANCE_INTERFACE_PATH "/org/jonatan/Contejner/Containers"
 #endif
 
 enum contejner_error_code {

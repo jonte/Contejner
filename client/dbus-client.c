@@ -21,11 +21,68 @@ struct client {
     gint stderr_fd;
 };
 
+void status_change_cb (GDBusConnection *connection,
+                       const gchar *sender_name,
+                       const gchar *object_path,
+                       const gchar *interface_name,
+                       const gchar *signal_name,
+                       GVariant *parameters,
+                       gpointer user_data)
+{
+    struct client *client = user_data;
+    const char *status;
+
+    g_variant_get(parameters, "(s)", &status);
+    g_debug ("Received new status: %s", status);
+    if (!g_strcmp0("STOPPED", status)) {
+        g_main_loop_quit(client->loop);
+    }
+}
+
+static gboolean process_output(gpointer user_data)
+{
+    struct client *client = user_data;
+    char buf[1024] = { 0 };
+    int flags = fcntl(client->stdout_fd, F_GETFL, 0);
+    fcntl(client->stdout_fd, F_SETFL, flags | O_NONBLOCK);
+    flags = fcntl(client->stderr_fd, F_GETFL, 0);
+    fcntl(client->stderr_fd, F_SETFL, flags | O_NONBLOCK);
+    int fds[] = {client->stdout_fd, client->stderr_fd};
+    char *fds_begin_text[] = {"\x1b[32m","\x1b[31m"};
+    char *fds_end_text[] = {"\x1b[0m", "\x1b[0m"};
+
+    size_t i = 0;
+    for (i = 0; i < sizeof(fds) / sizeof(fds[0]); i++) {
+        int fd = fds[i];
+        int r = read(fd, buf, 1023);
+        if (r) {
+            buf[r] = '\0';
+            printf("%s%s%s", fds_begin_text[i], buf, fds_end_text[i]);
+            fflush(stdout);
+        }
+    }
+
+    return G_SOURCE_CONTINUE;
+}
+
 static void connect (struct client *client)
 {
     GError *error = NULL;
     gchar *command = g_strdup_printf("%s.Connect", client->container_name);
     GUnixFDList *fd_list = NULL;
+
+    g_dbus_connection_signal_subscribe (
+            g_dbus_proxy_get_connection(client->container_proxy),
+            g_dbus_proxy_get_name(client->container_proxy),
+            /* TODO: Why doesn't the below work? */
+            NULL,//g_dbus_proxy_get_interface_name(client->container_proxy),
+            "StatusChanged",
+            g_dbus_proxy_get_object_path(client->container_proxy),
+            NULL,
+            G_DBUS_SIGNAL_FLAGS_NONE,
+            status_change_cb,
+            client,
+            NULL);
 
     g_dbus_proxy_call_with_unix_fd_list_sync (client->container_proxy,
                                               command,
@@ -50,27 +107,8 @@ static void connect (struct client *client)
     client->stderr_fd = g_unix_fd_list_get(fd_list, 1, &error);
     if (error) { g_error ("Failed to get file descriptor"); }
 
-    char buf[1024] = { 0 };
-    int flags = fcntl(client->stdout_fd, F_GETFL, 0);
-    fcntl(client->stdout_fd, F_SETFL, flags | O_NONBLOCK);
-    flags = fcntl(client->stderr_fd, F_GETFL, 0);
-    fcntl(client->stderr_fd, F_SETFL, flags | O_NONBLOCK);
-    int fds[] = {client->stdout_fd, client->stderr_fd};
-    char *fds_begin_text[] = {"\x1b[32m","\x1b[31m"};
-    char *fds_end_text[] = {"\x1b[0m", "\x1b[0m"};
+    g_idle_add(process_output, client);
 
-    while(TRUE) {
-        int i = 0;
-        for (i = 0; i < sizeof(fds) / sizeof(fds[0]); i++) {
-            int fd = fds[i];
-            int r = read(fd, buf, 1023);
-            if (r) {
-                buf[r] = '\0';
-                printf("%s%s%s", fds_begin_text[i], buf, fds_end_text[i]);
-                fflush(stdout);
-            }
-        }
-    }
 }
 
 static gboolean open_container (struct client *client)
@@ -211,9 +249,11 @@ static void proxy_ready (GObject *source_object,
             gchar *interface = create(client);
             g_print ("Created new container: %s", interface);
             g_free (interface);
+            g_main_loop_quit(client->loop);
     }
     if (client->do_list) {
             list_containers(client);
+            g_main_loop_quit(client->loop);
     }
     if (client->exec_command) {
         if (!client->container_name) {
@@ -223,12 +263,11 @@ static void proxy_ready (GObject *source_object,
         open_container(client);
         set_command(client);
         run(client);
+        g_main_loop_quit(client->loop);
     } if (client->do_connect) {
         open_container(client);
         connect (client);
     }
-
-    g_main_loop_quit(client->loop);
 }
 
 static void print_func (const gchar *string)
