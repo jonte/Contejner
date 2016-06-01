@@ -4,8 +4,6 @@
  */
 
 #define _GNU_SOURCE
-#include "contejner-instance.h"
-#include "contejner-common.h"
 #include <error.h>
 #include <stdio.h>
 #include <sched.h>
@@ -14,6 +12,9 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+
+#include "contejner-instance.h"
+#include "contejner-common.h"
 
 #define CONTAINER_NAME_SZ 20
 #define STACK_SIZE 1024 * 1024
