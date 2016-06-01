@@ -33,9 +33,11 @@ static void container_created_cb (ContejnerInstance *c, gpointer user_data)
     ContejnerManagerInterface *self = ((void**)user_data)[0];
     ContejnerManagerInterfacePrivate *priv = CONTEJNER_MANAGER_INTERFACE_GET_PRIVATE(self);
     GDBusMethodInvocation *m = ((void**)user_data)[1];
+    GDBusConnection *connection =
+        g_dbus_method_invocation_get_connection(m);
 
     ContejnerInstanceInterface *container_interface =
-        contejner_instance_interface_new (c);
+        contejner_instance_interface_new (c, connection);
 
     g_dbus_object_skeleton_add_interface(priv->container_objects,
                                          G_DBUS_INTERFACE_SKELETON(container_interface));

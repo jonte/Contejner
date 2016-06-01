@@ -18,7 +18,9 @@ typedef struct _ContejnerInstanceInterfacePrivate ContejnerInstanceInterfacePriv
 struct _ContejnerInstanceInterfacePrivate {
         GDBusNodeInfo *node_info;
         gchar *dbus_name;
+        gchar *dbus_object_path;
         ContejnerInstance *container;
+        GDBusConnection *connection;
 };
 
 #define CONTEJNER_INSTANCE_INTERFACE_GET_PRIVATE(object)                           \
@@ -237,6 +239,48 @@ static GVariant *get_properties (GDBusInterfaceSkeleton  *interface_)
 static void contejner_instance_interface_init (ContejnerInstanceInterface *svc) {
 }
 
+static void status_changed(GObject *instance,
+                           GParamSpec* property,
+                           gpointer user_data)
+{
+    ContejnerInstanceInterface *self = CONTEJNER_INSTANCE_INTERFACE(user_data);
+    ContejnerInstanceInterfacePrivate *priv =
+        CONTEJNER_INSTANCE_INTERFACE_GET_PRIVATE(self);
+
+    GValue new_value = G_VALUE_INIT;
+    GVariant *variant = NULL;
+    GError *error = NULL;
+
+    g_value_init(&new_value, G_TYPE_INT);
+    g_object_get_property(instance, "status", &new_value);
+    ContejnerInstanceStatus status = g_value_get_int(&new_value);
+    switch (status) {
+        case CONTEJNER_INSTANCE_STATUS_RUNNING:
+            variant = g_variant_new("(s)", "RUNNING");
+            break;
+        case CONTEJNER_INSTANCE_STATUS_STOPPED:
+            variant = g_variant_new("(s)", "STOPPED");
+            break;
+        case CONTEJNER_INSTANCE_STATUS_CREATED:
+            variant = g_variant_new("(s)", "CREATED");
+            break;
+        default: g_warning ("Illegal status received");
+    }
+
+    gboolean dbus_status =
+        g_dbus_connection_emit_signal (priv->connection,
+                                       NULL,
+                                       priv->dbus_object_path,
+                                       priv->dbus_name,
+                                       "StatusChanged",
+                                       variant,
+                                       &error);
+    if (!dbus_status) {
+        g_warning("Failed to emit signal: %s", error->message);
+    }
+
+}
+
 static void contejner_instance_interface_class_init (ContejnerInstanceInterfaceClass *class)
 {
     g_type_class_add_private(class, sizeof(ContejnerInstanceInterfacePrivate));
@@ -246,7 +290,8 @@ static void contejner_instance_interface_class_init (ContejnerInstanceInterfaceC
     G_DBUS_INTERFACE_SKELETON_CLASS(class)->get_properties = get_properties;
 }
 
-ContejnerInstanceInterface * contejner_instance_interface_new (ContejnerInstance *container)
+ContejnerInstanceInterface * contejner_instance_interface_new (ContejnerInstance *container,
+                                                               GDBusConnection *connection)
 {
    ContejnerInstanceInterface *svc = g_object_new (CONTEJNER_TYPE_INSTANCE_INTERFACE, NULL);
    ContejnerInstanceInterfacePrivate *priv =
@@ -257,9 +302,17 @@ ContejnerInstanceInterface * contejner_instance_interface_new (ContejnerInstance
    priv->dbus_name = g_strdup_printf("%s%d",
                                      CONTEJNER_INSTANCE_INTERFACE_NAME,
                                      id);
+   priv->dbus_object_path = CONTEJNER_INSTANCE_INTERFACE_PATH;
+
+   priv->connection = connection;
    priv->container = container;
 
    load_node_info(svc);
+
+   g_signal_connect (container,
+                    "notify::status",
+                    G_CALLBACK(status_changed),
+                    svc);
 
    return svc;
 }

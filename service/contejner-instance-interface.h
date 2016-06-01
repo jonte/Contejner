@@ -18,7 +18,8 @@ G_DECLARE_FINAL_TYPE(ContejnerInstanceInterface,
                      CONTEJNER,
                      INSTANCE_INTERFACE, GDBusInterfaceSkeleton)
 
-ContejnerInstanceInterface *contejner_instance_interface_new (ContejnerInstance *intance);
+ContejnerInstanceInterface *contejner_instance_interface_new (ContejnerInstance *intance,
+                                                              GDBusConnection *connection);
 
 const char *contejner_instance_interface_get_dbus_interface (const ContejnerInstanceInterface *i);
 
