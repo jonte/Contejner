@@ -104,6 +104,19 @@ static gboolean reaper(gpointer data)
     return G_SOURCE_CONTINUE;
 }
 
+void log_func (const gchar *log_domain,
+               GLogLevelFlags log_level,
+               const gchar *message,
+               gpointer user_data)
+{
+    ContejnerInstance *self = CONTEJNER_INSTANCE(user_data);
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(self);
+    char *new_domain = g_strdup_printf("%s%s", priv->name,
+                                       log_domain ? log_domain : "");
+    g_log_default_handler(new_domain, log_level, message, NULL);
+    g_free (new_domain);
+}
+
 static void contejner_instance_get_property (GObject *object,
                                              guint property_id,
                                              GValue *value,
@@ -161,6 +174,9 @@ static void contejner_instance_set_property (GObject *object,
 
 static void contejner_instance_init (ContejnerInstance *svc) {
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE (svc);
+
+    g_log_set_default_handler(log_func, svc);
+
     priv->rootfs_path = "/";
     priv->command = NULL;
     priv->stack = g_malloc(STACK_SIZE);
