@@ -294,6 +294,7 @@ void contejner_instance_run (ContejnerInstance *instance,
 
     if (!priv->command || !priv->command_args) {
         message = "No command supplied";
+        g_debug(message);
         error = CONTEJNER_ERR_FAILED_TO_START;
         priv->status = CONTEJNER_INSTANCE_STATUS_STOPPED;
         goto contejner_instance_run_return;
@@ -305,6 +306,7 @@ void contejner_instance_run (ContejnerInstance *instance,
                            instance);
     if (child_pid == -1) {
         message = "Error from clone() call";
+        g_warning("%s: %s", message, strerror(errno));
         error = CONTEJNER_ERR_FAILED_TO_START;
         priv->status = CONTEJNER_INSTANCE_STATUS_STOPPED;
         goto contejner_instance_run_return;
