@@ -21,6 +21,29 @@ struct client {
     gint stderr_fd;
 };
 
+static void print_output(const int *fds, gboolean exhaust)
+{
+    static const char *fds_begin_text[] = {"\x1b[32m","\x1b[31m"};
+    static const char *fds_end_text[] = {"\x1b[0m", "\x1b[0m"};
+    char buf[1024] = { 0 };
+
+    int i = 0;
+    for (; fds[i] != -1; i++) {
+        int fd = fds[i];
+        do {
+            int r = read(fd, buf, 1023);
+            if (r) {
+                buf[r] = '\0';
+                printf("%s%s%s", fds_begin_text[i], buf, fds_end_text[i]);
+                fflush(stdout);
+            }
+            if (r != 1023) {
+                break;
+            }
+        } while(exhaust);
+    }
+}
+
 void status_change_cb (GDBusConnection *connection,
                        const gchar *sender_name,
                        const gchar *object_path,
@@ -35,32 +58,20 @@ void status_change_cb (GDBusConnection *connection,
     g_variant_get(parameters, "(s)", &status);
     g_debug ("Received new status: %s", status);
     if (!g_strcmp0("STOPPED", status)) {
+        const int fds[] = {client->stdout_fd, client->stderr_fd, -1};
+        print_output(fds, FALSE);
         g_main_loop_quit(client->loop);
     }
+
 }
 
 static gboolean process_output(gpointer user_data)
 {
     struct client *client = user_data;
-    char buf[1024] = { 0 };
-    int flags = fcntl(client->stdout_fd, F_GETFL, 0);
-    fcntl(client->stdout_fd, F_SETFL, flags | O_NONBLOCK);
-    flags = fcntl(client->stderr_fd, F_GETFL, 0);
-    fcntl(client->stderr_fd, F_SETFL, flags | O_NONBLOCK);
-    int fds[] = {client->stdout_fd, client->stderr_fd};
-    char *fds_begin_text[] = {"\x1b[32m","\x1b[31m"};
-    char *fds_end_text[] = {"\x1b[0m", "\x1b[0m"};
 
-    size_t i = 0;
-    for (i = 0; i < sizeof(fds) / sizeof(fds[0]); i++) {
-        int fd = fds[i];
-        int r = read(fd, buf, 1023);
-        if (r) {
-            buf[r] = '\0';
-            printf("%s%s%s", fds_begin_text[i], buf, fds_end_text[i]);
-            fflush(stdout);
-        }
-    }
+    const int fds[] = {client->stdout_fd, client->stderr_fd, -1};
+
+    print_output(fds, FALSE);
 
     return G_SOURCE_CONTINUE;
 }
@@ -107,8 +118,12 @@ static void connect (struct client *client)
     client->stderr_fd = g_unix_fd_list_get(fd_list, 1, &error);
     if (error) { g_error ("Failed to get file descriptor"); }
 
-    g_idle_add(process_output, client);
+    int flags = fcntl(client->stdout_fd, F_GETFL, 0);
+    fcntl(client->stdout_fd, F_SETFL, flags | O_NONBLOCK);
+    flags = fcntl(client->stderr_fd, F_GETFL, 0);
+    fcntl(client->stderr_fd, F_SETFL, flags | O_NONBLOCK);
 
+    g_idle_add(process_output, client);
 }
 
 static gboolean open_container (struct client *client)
@@ -249,11 +264,9 @@ static void proxy_ready (GObject *source_object,
             gchar *interface = create(client);
             g_print ("Created new container: %s", interface);
             g_free (interface);
-            g_main_loop_quit(client->loop);
     }
     if (client->do_list) {
             list_containers(client);
-            g_main_loop_quit(client->loop);
     }
     if (client->exec_command) {
         if (!client->container_name) {
@@ -263,10 +276,11 @@ static void proxy_ready (GObject *source_object,
         open_container(client);
         set_command(client);
         run(client);
-        g_main_loop_quit(client->loop);
     } if (client->do_connect) {
         open_container(client);
         connect (client);
+    } else {
+        g_main_loop_quit(client->loop);
     }
 }
 
