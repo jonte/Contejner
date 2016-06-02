@@ -21,7 +21,7 @@ struct client {
     gint stderr_fd;
 };
 
-static void print_output(const int *fds, gboolean exhaust)
+static void print_output(const int *fds)
 {
     static const char *fds_begin_text[] = {"\x1b[32m","\x1b[31m"};
     static const char *fds_end_text[] = {"\x1b[0m", "\x1b[0m"};
@@ -30,17 +30,20 @@ static void print_output(const int *fds, gboolean exhaust)
     int i = 0;
     for (; fds[i] != -1; i++) {
         int fd = fds[i];
-        do {
-            int r = read(fd, buf, 1023);
+        printf(fds_begin_text[i]);
+        while(TRUE) {
+            static const int READ_SZ = 1;
+            int r = read(fd, buf, READ_SZ);
             if (r) {
                 buf[r] = '\0';
-                printf("%s%s%s", fds_begin_text[i], buf, fds_end_text[i]);
-                fflush(stdout);
+                printf(buf);
             }
-            if (r != 1023) {
+            if (r != READ_SZ) {
                 break;
             }
-        } while(exhaust);
+        }
+        printf(fds_end_text[i]);
+        fflush(stdout);
     }
 }
 
@@ -59,7 +62,7 @@ void status_change_cb (GDBusConnection *connection,
     g_debug ("Received new status: %s", status);
     if (!g_strcmp0("STOPPED", status)) {
         const int fds[] = {client->stdout_fd, client->stderr_fd, -1};
-        print_output(fds, FALSE);
+        print_output(fds);
         g_main_loop_quit(client->loop);
     }
 
@@ -71,7 +74,7 @@ static gboolean process_output(gpointer user_data)
 
     const int fds[] = {client->stdout_fd, client->stderr_fd, -1};
 
-    print_output(fds, FALSE);
+    print_output(fds);
 
     return G_SOURCE_CONTINUE;
 }
