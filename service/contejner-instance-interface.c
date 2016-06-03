@@ -143,8 +143,18 @@ setroot_error:
     } else if (!g_strcmp0(method_name, "Kill")) {
         int signal = 0;
         g_variant_get(parameters, "(i)", &signal);
-        contejner_instance_kill(priv->container, signal);
-        g_dbus_method_invocation_return_value (invocation, NULL);
+        gboolean ret = contejner_instance_kill(priv->container, signal);
+        if (ret) {
+            g_dbus_method_invocation_return_value (invocation, NULL);
+        } else {
+            gchar *func = g_strdup_printf("%s.Error.KillFailed",
+                        g_dbus_method_invocation_get_method_name(invocation));
+            gchar *error = "Failed to send kill signal";
+            g_dbus_method_invocation_return_dbus_error(invocation,
+                                                       func,
+                                                       error);
+            g_free(func);
+        }
     }
 }
 

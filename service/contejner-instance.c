@@ -367,6 +367,11 @@ gboolean contejner_instance_set_root(ContejnerInstance *instance,
 gboolean contejner_instance_kill(ContejnerInstance *instance, int signal)
 {
     ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
-    g_debug("Killing %d", priv->pid);
-    return kill(priv->pid, signal) == 0;
+    if (priv->status == CONTEJNER_INSTANCE_STATUS_RUNNING) {
+        g_debug("Killing %d", priv->pid);
+        return kill(priv->pid, signal) == 0;
+    } else {
+        g_debug("Tried to kill non-running container");
+        return FALSE;
+    }
 }
