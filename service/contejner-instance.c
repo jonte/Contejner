@@ -294,7 +294,7 @@ void contejner_instance_run (ContejnerInstance *instance,
 
     if (!priv->command || !priv->command_args) {
         message = "No command supplied";
-        g_debug(message);
+        g_debug("%s", message);
         error = CONTEJNER_ERR_FAILED_TO_START;
         priv->status = CONTEJNER_INSTANCE_STATUS_STOPPED;
         goto contejner_instance_run_return;
