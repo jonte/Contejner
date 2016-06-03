@@ -144,6 +144,7 @@ setroot_error:
         int signal = 0;
         g_variant_get(parameters, "(i)", &signal);
         contejner_instance_kill(priv->container, signal);
+        g_dbus_method_invocation_return_value (invocation, NULL);
     }
 }
 
