@@ -30,19 +30,19 @@ static void print_output(const int *fds)
     int i = 0;
     for (; fds[i] != -1; i++) {
         int fd = fds[i];
-        printf(fds_begin_text[i]);
+        printf("%s", fds_begin_text[i]);
         while(TRUE) {
             static const int READ_SZ = 1;
             int r = read(fd, buf, READ_SZ);
             if (r) {
                 buf[r] = '\0';
-                printf(buf);
+                printf("%s", buf);
             }
             if (r != READ_SZ) {
                 break;
             }
         }
-        printf(fds_end_text[i]);
+        printf("%s", fds_end_text[i]);
         fflush(stdout);
     }
 }
@@ -228,7 +228,6 @@ static void list_containers(struct client *client)
         for (l = objects; l != NULL; l = l->next)
         {
             GDBusObject *o = G_DBUS_OBJECT(l->data);
-            g_print(g_dbus_object_get_object_path(o));
             GList *ifaces = g_dbus_object_get_interfaces(o);
             GList *ll;
             for (ll = ifaces; ll != NULL; ll = ll->next)
