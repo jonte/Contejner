@@ -16,5 +16,8 @@
         <method name="SetRoot">
             <arg name="root" direction="in" type="s"></arg>
         </method>
+        <method name="Kill">
+            <arg name="signal" direction="in" type="i"></arg>
+        </method>
   </interface>
 </node>

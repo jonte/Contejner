@@ -300,11 +300,11 @@ void contejner_instance_run (ContejnerInstance *instance,
         goto contejner_instance_run_return;
     }
 
-    pid_t child_pid = clone(child_func,
-                           priv->stack + STACK_SIZE,
-                           priv->unshared_namespaces | SIGCHLD,
-                           instance);
-    if (child_pid == -1) {
+    priv->pid = clone(child_func,
+                      priv->stack + STACK_SIZE,
+                      priv->unshared_namespaces | SIGCHLD,
+                      instance);
+    if (priv->pid == -1) {
         message = "Error from clone() call";
         g_warning("%s: %s", message, strerror(errno));
         error = CONTEJNER_ERR_FAILED_TO_START;
@@ -362,4 +362,11 @@ gboolean contejner_instance_set_root(ContejnerInstance *instance,
     }
 
     return FALSE;
+}
+
+gboolean contejner_instance_kill(ContejnerInstance *instance, int signal)
+{
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
+    g_debug("Killing %d", priv->pid);
+    return kill(priv->pid, signal) == 0;
 }

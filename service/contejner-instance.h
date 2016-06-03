@@ -50,6 +50,8 @@ gboolean contejner_instance_set_command(ContejnerInstance *instance,
 gboolean contejner_instance_set_root(ContejnerInstance *instance,
                                      const GFile *path);
 
+gboolean contejner_instance_kill(ContejnerInstance *instance, int signal);
+
 G_END_DECLS
 
 #endif /* DBUS_SERVICE_INTERFACE_H */

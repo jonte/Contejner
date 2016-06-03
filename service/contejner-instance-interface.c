@@ -140,6 +140,10 @@ setroot_error:
                                                    func,
                                                    error);
         g_free(func);
+    } else if (!g_strcmp0(method_name, "Kill")) {
+        int signal = 0;
+        g_variant_get(parameters, "(i)", &signal);
+        contejner_instance_kill(priv->container, signal);
     }
 }
 
