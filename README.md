@@ -1,3 +1,5 @@
+![Build status](https://travis-ci.org/jonte/Contejner.svg?branch=dev)
+
 Contejner
 =========
 
