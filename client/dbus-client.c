@@ -19,6 +19,7 @@ struct client {
     gchar *container_name;
     gint stdout_fd;
     gint stderr_fd;
+    gint kill_signal;
 };
 
 static void print_output(const int *fds)
@@ -209,6 +210,24 @@ static void run (struct client *client)
     }
 }
 
+static void kill_ (struct client *client)
+{
+    GError *error = NULL;
+    gchar *command = g_strdup_printf("%s.Kill", client->container_name);
+    GVariant *params = g_variant_new("(i)", client->kill_signal);
+    g_dbus_proxy_call_sync (client->container_proxy,
+                            command,
+                            params,
+                            G_DBUS_PROXY_FLAGS_NONE,
+                            -1,
+                            NULL,
+                            &error);
+    g_free (command);
+    if (error) {
+        g_error("Failed to call Kill");
+    }
+}
+
 static void list_containers(struct client *client)
 {
     GError *error = NULL;
@@ -281,6 +300,10 @@ static void proxy_ready (GObject *source_object,
     } if (client->do_connect) {
         open_container(client);
         connect (client);
+    } if (client->kill_signal) {
+        open_container(client);
+        kill_(client);
+        g_main_loop_quit(client->loop);
     } else {
         g_main_loop_quit(client->loop);
     }
@@ -305,6 +328,7 @@ int main(int argc, char **argv) {
         { "new", 'n', 0, G_OPTION_ARG_NONE, &client.do_create, "Create new container", NULL },
         { "container", 'c', 0, G_OPTION_ARG_STRING, &container_name, "Container to operate on", NULL },
         { "connect-output", 'o', 0, G_OPTION_ARG_NONE, &client.do_connect, "Connect to stdout & stderr on container", NULL },
+        { "kill", 'k', 0, G_OPTION_ARG_INT, &client.kill_signal, "Kill container with the supplied signal. Use integer value for signal. ", NULL },
         { NULL }
     };
 
@@ -314,6 +338,15 @@ int main(int argc, char **argv) {
     {
         g_print ("option parsing failed: %s\n", error->message);
         return 1;
+    }
+
+    if (client.kill_signal) {
+        if (client.do_connect || client.do_create || client.do_list || command) {
+            g_error("--kill must only be used together with --container");
+        }
+        if (!container_name) {
+            g_error("--container is required when supplying --kill");
+        }
     }
 
     if (command) {
