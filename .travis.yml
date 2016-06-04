@@ -10,4 +10,5 @@ script:
   - ./configure && make && sudo make install
   - cd ~/build/jonte/Contejner
   - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
-
+  - cd ../tests/
+  - SERVICE_PREFIX=../build/service/ CLIENT_PREFIX=../build/client/ ./runner.sh
