@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdlib.h>
 
 #include "contejner-instance.h"
 #include "contejner-common.h"
@@ -61,6 +62,7 @@ struct _ContejnerInstancePrivate {
     char stderr_buf[STDERR_BUF_SZ];
     ContejnerInstanceStatus status;
     pid_t pid;
+    char *prepare_command;
 };
 
 enum {
@@ -181,6 +183,7 @@ static void contejner_instance_init (ContejnerInstance *svc) {
     priv->command = NULL;
     priv->stack = g_malloc(STACK_SIZE);
     priv->unshared_namespaces = DEFAULT_UNSHARED_NAMESPACES;
+    priv->prepare_command = "./prepare.sh";
 }
 
 static void contejner_instance_class_init (ContejnerInstanceClass *class)
@@ -374,4 +377,17 @@ gboolean contejner_instance_kill(ContejnerInstance *instance, int signal)
         g_debug("Tried to kill non-running container");
         return FALSE;
     }
+}
+
+gboolean contejner_instance_prepare(ContejnerInstance *instance)
+{
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
+    char *cmd = g_strdup_printf("%s \"%s\" \"%s\"",
+                                priv->prepare_command,
+                                priv->name,
+                                priv->rootfs_path);
+    int retcode = system(cmd);
+    g_free(cmd);
+
+    return retcode == 0;
 }

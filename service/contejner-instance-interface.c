@@ -165,6 +165,23 @@ static void handle_Kill(GVariant *parameters,
         }
 }
 
+static void handle_Prepare(GDBusMethodInvocation *invocation,
+                           ContejnerInstanceInterfacePrivate *priv)
+{
+        gboolean ret = contejner_instance_prepare(priv->container);
+        if (ret) {
+            g_dbus_method_invocation_return_value (invocation, NULL);
+        } else {
+            gchar *func = g_strdup_printf("%s.Error.KillFailed",
+                        g_dbus_method_invocation_get_method_name(invocation));
+            gchar *error = "Failed to send kill signal";
+            g_dbus_method_invocation_return_dbus_error(invocation,
+                                                       func,
+                                                       error);
+            g_free(func);
+        }
+}
+
 static void dbus_method_call(G_GNUC_UNUSED GDBusConnection *connection,
                              G_GNUC_UNUSED const gchar *sender,
                              G_GNUC_UNUSED const gchar *object_path,
@@ -187,6 +204,8 @@ static void dbus_method_call(G_GNUC_UNUSED GDBusConnection *connection,
         handle_SetRoot(parameters, invocation, priv);
     } else if (!g_strcmp0(method_name, "Kill")) {
         handle_Kill(parameters, invocation, priv);
+    } else if (!g_strcmp0(method_name, "Prepare")) {
+        handle_Prepare(invocation, priv);
     }
 }
 

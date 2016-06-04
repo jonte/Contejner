@@ -19,5 +19,6 @@
         <method name="Kill">
             <arg name="signal" direction="in" type="i"></arg>
         </method>
+        <method name="Prepare"> </method>
   </interface>
 </node>

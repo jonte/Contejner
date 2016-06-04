@@ -51,6 +51,7 @@ gboolean contejner_instance_set_root(ContejnerInstance *instance,
                                      const GFile *path);
 
 gboolean contejner_instance_kill(ContejnerInstance *instance, int signal);
+gboolean contejner_instance_prepare(ContejnerInstance *instance);
 
 G_END_DECLS
 
