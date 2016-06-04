@@ -297,13 +297,15 @@ static void proxy_ready (GObject *source_object,
         open_container(client);
         set_command(client);
         run(client);
-    } if (client->do_connect) {
-        open_container(client);
-        connect (client);
     } if (client->kill_signal) {
         open_container(client);
         kill_(client);
-        g_main_loop_quit(client->loop);
+    }
+
+    /* Stop main loop if we are not connecting */
+    if (client->do_connect) {
+        open_container(client);
+        connect (client);
     } else {
         g_main_loop_quit(client->loop);
     }
