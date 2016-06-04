@@ -42,72 +42,76 @@ static void container_running_cb(ContejnerInstance *container,
     g_variant_unref(value);
 }
 
-static void dbus_method_call(GDBusConnection *connection,
-                              const gchar *sender,
-                              const gchar *object_path,
-                              const gchar *interface_name,
-                              const gchar *method_name,
-                              GVariant *parameters,
-                              GDBusMethodInvocation *invocation,
-                              gpointer user_data)
+static void handle_Run(GDBusMethodInvocation *invocation,
+                       ContejnerInstanceInterface *self,
+                       ContejnerInstanceInterfacePrivate *priv)
 {
-    ContejnerInstanceInterface *self = user_data;
-    ContejnerInstanceInterfacePrivate *priv = CONTEJNER_INSTANCE_INTERFACE_GET_PRIVATE(self);
     void *created_data[] = {(void *) self, (void *) invocation};
+    contejner_instance_run(priv->container,
+                           container_running_cb,
+                           created_data);
+}
 
-    if (!g_strcmp0(method_name, "Run")) {
-        contejner_instance_run(priv->container,
-                               container_running_cb,
-                               created_data);
-    } else if (!g_strcmp0(method_name, "SetCommand")) {
-        gchar *command = NULL;
-        GVariantIter *iter = NULL;
-        gchar *str = NULL;
 
-        g_variant_get(parameters, "(sas)", &command, &iter);
+static void handle_SetCommand(GVariant *parameters,
+                              GDBusMethodInvocation *invocation,
+                              ContejnerInstanceInterfacePrivate *priv)
+{
+    gchar *command = NULL;
+    GVariantIter *iter = NULL;
+    gchar *str = NULL;
 
-        if (!iter) {
-            g_error ("Failed to parse");
-        }
+    g_variant_get(parameters, "(sas)", &command, &iter);
 
-        int num_args = g_variant_iter_n_children(iter)+2;
+    if (!iter) {
+        g_error ("Failed to parse");
+    }
 
-        char *args[num_args];
+    int num_args = g_variant_iter_n_children(iter)+2;
 
-        args[0] = g_strdup(command);
+    char *args[num_args];
 
-        int i = 1;
-        while (g_variant_iter_loop (iter, "s", &str)) {
-            args[i++] = g_strdup(str);
-        }
-        args[i] = NULL;
-        g_variant_iter_free (iter);
+    args[0] = g_strdup(command);
 
-        contejner_instance_set_command(priv->container,
-                                       command,
-                                       (const gchar **)args);
+    int i = 1;
+    while (g_variant_iter_loop (iter, "s", &str)) {
+        args[i++] = g_strdup(str);
+    }
+    args[i] = NULL;
+    g_variant_iter_free (iter);
 
-        i = 0;
-        for (i = 0; i < num_args - 1; i++) {
-            g_free(args[i]);
-        }
+    contejner_instance_set_command(priv->container,
+                                   command,
+                                   (const gchar **)args);
 
-        g_dbus_method_invocation_return_value (invocation, NULL);
-    } else if (!g_strcmp0(method_name, "Connect")) {
-        int fds[2] = { 0 };
-        GValue v = G_VALUE_INIT;
-        g_value_init(&v, G_TYPE_INT);
-        g_object_get_property(G_OBJECT(priv->container), "stderr", &v);
-        fds[1] = g_value_get_int(&v);
+    i = 0;
+    for (i = 0; i < num_args - 1; i++) {
+        g_free(args[i]);
+    }
 
-        g_object_get_property(G_OBJECT(priv->container), "stdout", &v);
-        fds[0] = g_value_get_int(&v);
+    g_dbus_method_invocation_return_value (invocation, NULL);
+}
+static void handle_Connect(GDBusMethodInvocation *invocation,
+                           ContejnerInstanceInterfacePrivate *priv)
+{
+    int fds[2] = { 0 };
+    GValue v = G_VALUE_INIT;
+    g_value_init(&v, G_TYPE_INT);
+    g_object_get_property(G_OBJECT(priv->container), "stderr", &v);
+    fds[1] = g_value_get_int(&v);
 
-        GUnixFDList *fd_list = g_unix_fd_list_new_from_array(fds, 2);
-        g_dbus_method_invocation_return_value_with_unix_fd_list (invocation,
-                                                                 NULL,
-                                                                 fd_list);
-    } else if (!g_strcmp0(method_name, "SetRoot")) {
+    g_object_get_property(G_OBJECT(priv->container), "stdout", &v);
+    fds[0] = g_value_get_int(&v);
+
+    GUnixFDList *fd_list = g_unix_fd_list_new_from_array(fds, 2);
+    g_dbus_method_invocation_return_value_with_unix_fd_list (invocation,
+                                                             NULL,
+                                                             fd_list);
+}
+static void handle_SetRoot(GVariant *parameters,
+                           GDBusMethodInvocation *invocation,
+                           ContejnerInstanceInterfacePrivate *priv)
+{
         GValue status = G_VALUE_INIT;
         gchar *path = NULL;
         g_value_init(&status, G_TYPE_INT);
@@ -140,7 +144,11 @@ setroot_error:
                                                    func,
                                                    error);
         g_free(func);
-    } else if (!g_strcmp0(method_name, "Kill")) {
+}
+static void handle_Kill(GVariant *parameters,
+                        GDBusMethodInvocation *invocation,
+                        ContejnerInstanceInterfacePrivate *priv)
+{
         int signal = 0;
         g_variant_get(parameters, "(i)", &signal);
         gboolean ret = contejner_instance_kill(priv->container, signal);
@@ -155,6 +163,30 @@ setroot_error:
                                                        error);
             g_free(func);
         }
+}
+
+static void dbus_method_call(G_GNUC_UNUSED GDBusConnection *connection,
+                             G_GNUC_UNUSED const gchar *sender,
+                             G_GNUC_UNUSED const gchar *object_path,
+                             G_GNUC_UNUSED const gchar *interface_name,
+                             const gchar *method_name,
+                             GVariant *parameters,
+                             GDBusMethodInvocation *invocation,
+                             gpointer user_data)
+{
+    ContejnerInstanceInterface *self = user_data;
+    ContejnerInstanceInterfacePrivate *priv = CONTEJNER_INSTANCE_INTERFACE_GET_PRIVATE(self);
+
+    if (!g_strcmp0(method_name, "Run")) {
+        handle_Run(invocation, self, priv);
+    } else if (!g_strcmp0(method_name, "SetCommand")) {
+        handle_SetCommand(parameters, invocation, priv);
+    } else if (!g_strcmp0(method_name, "Connect")) {
+        handle_Connect(invocation, priv);
+    } else if (!g_strcmp0(method_name, "SetRoot")) {
+        handle_SetRoot(parameters, invocation, priv);
+    } else if (!g_strcmp0(method_name, "Kill")) {
+        handle_Kill(parameters, invocation, priv);
     }
 }
 
