@@ -5,6 +5,7 @@
 
 #include "contejner-instance-interface.h"
 #include <gio/gunixfdlist.h>
+#include "contejner-instance.xml.h"
 
 struct _ContejnerInstanceInterface
 {
@@ -229,21 +230,11 @@ static void load_node_info(ContejnerInstanceInterface *svc) {
     ContejnerInstanceInterfacePrivate *priv =
         CONTEJNER_INSTANCE_INTERFACE_GET_PRIVATE (svc);
 
-    gchar *introspection_xml = NULL;
-    gsize introspection_xml_sz;
     GError *error = NULL;
     GDBusNodeInfo *node_info = NULL;
     GDBusInterfaceInfo *interface_info = NULL;
 
-    if (!g_file_get_contents(CONTEJNER_INSTANCE_INTERFACE_XML,
-                             &introspection_xml,
-                             &introspection_xml_sz,
-                             &error)) {
-        g_error ("Failed to read introspection '%s'",
-                 CONTEJNER_INSTANCE_INTERFACE_XML);
-    }
-
-    node_info = g_dbus_node_info_new_for_xml (introspection_xml, &error);
+    node_info = g_dbus_node_info_new_for_xml (CONTEJNER_INSTANCE_INTERFACE_XML, &error);
     if (!node_info) {
         g_error ("Failed to parse introspection '%s'",
                  CONTEJNER_INSTANCE_INTERFACE_XML);

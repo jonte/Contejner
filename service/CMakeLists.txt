@@ -16,9 +16,20 @@ SET (SOURCES
      contejner-instance.c
      contejner-instance-interface.c)
 
+ADD_CUSTOM_COMMAND(OUTPUT dbus-service.xml.h
+                   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/xml2h.sh CONTEJNER_MANAGER_INTERFACE_XML ${CMAKE_CURRENT_SOURCE_DIR}/dbus-service.xml > dbus-service.xml.h
+                   DEPENDS dbus-service.xml)
+
+ADD_CUSTOM_COMMAND(OUTPUT contejner-instance.xml.h
+                   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/xml2h.sh CONTEJNER_INSTANCE_INTERFACE_XML ${CMAKE_CURRENT_SOURCE_DIR}/contejner-instance.xml > contejner-instance.xml.h
+                   DEPENDS contejner-instance.xml)
+
+SET_SOURCE_FILES_PROPERTIES(contejner-manager-interface.c PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/dbus-service.xml.h")
+SET_SOURCE_FILES_PROPERTIES(contejner-instance-interface.c PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/contejner-instance.xml.h")
+
 ADD_DEFINITIONS(-Wall -Werror)
 
-INCLUDE_DIRECTORIES (${GLIB_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES (${GLIB_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
 ADD_EXECUTABLE (contejner
     ${SOURCES})
