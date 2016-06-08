@@ -252,13 +252,8 @@ static void list_containers(struct client *client)
             for (ll = ifaces; ll != NULL; ll = ll->next)
             {
                 GDBusInterface *interface = G_DBUS_INTERFACE(ll->data);
-                GDBusInterfaceInfo *info =
-                    g_dbus_interface_get_info(interface);
-                if (info) {
-                    g_print(" - %s", info->name);
-                } else {
-                    g_print(" - Unable to get interface info");
-                }
+                const char *name = g_dbus_proxy_get_interface_name(G_DBUS_PROXY(interface));
+                g_print(" - %s", name);
                 g_object_unref(ll->data);
             }
             g_list_free(ifaces);
