@@ -35,3 +35,19 @@ To-do
 Known issues
 ============
 * There is a race condition in the client between the "idle function" for reading stdout/stderr and the dbus exit signal handler - this means that sometimes the client will exit before producing output.
+* On some Linux systems, e.g. Debian, users are not allowed to clone new namespaces. This can be fixed by tuning the `/proc/sys/kernel/unprivileged_userns_clone`. An example:
+
+    ```
+    e8johan@e8xps:~/projects/Contejner/b/service$ G_MESSAGES_DEBUG=all ./contejner
+    ** (contejner:4395): DEBUG: Acquired the name org.jonatan.Contejner on the session bus
+    (contejner:4395): Container 0-DEBUG: Container created: Container 0
+
+    (contejner:4395): Container 0-WARNING **: Error from clone() call: Operation not permitted
+    ^C
+    e8johan@e8xps:~/projects/Contejner/b/service$ echo 1 | sudo tee /proc/sys/kernel/unprivileged_userns_clone
+    1
+    e8johan@e8xps:~/projects/Contejner/b/service$ G_MESSAGES_DEBUG=all ./contejner
+    ** (contejner:4932): DEBUG: Acquired the name org.jonatan.Contejner on the session bus
+    (contejner:4932): Container 0-DEBUG: Container created: Container 0
+    (contejner:4932): Container 0-DEBUG: Child exited with status: 0
+    ```
