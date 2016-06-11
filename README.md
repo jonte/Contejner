@@ -9,6 +9,44 @@ How does it look?
 =================
 ![screenshot](screenshot.png)
 
+How does it work?
+=================
+
+Contejner is split into two parts, the contejner service that provides a d-bus interface for setting up containers and the contejner client, that provides a command line interface to the d-bus interface.
+
+Building it
+===========
+
+Contejner uses cmake. Simply create a build directory and reference the top-level `CMakeLists.txt` and build away, e.g.
+
+```
+$ git clone https://github.com/jonte/Contejner.git
+$ cd Contejner
+$ mkdir b
+$ cd b
+$ cmake ..
+$ make
+```
+
+Using it
+========
+
+First, start the contejner service:
+
+```
+$ contejner
+```
+
+Then, from a parallel terminal, execute a command using the contejner-client:
+
+```
+$ contejner-client -e /bin/ls -o
+```
+
+The `-e` option controls what to run inside the container. `-o` makes the output appear on the contejner-client console. Try the `--help` argument for more help.
+
+If you want to understand why something goes wrong, or just get more verbose output, try exporting `G_MESSAGES_DEBUG=all` before running the service and client.
+
 What works
 ==========
 Service
