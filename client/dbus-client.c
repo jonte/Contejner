@@ -270,9 +270,31 @@ static void list_containers(struct client *client)
             GList *ll;
             for (ll = ifaces; ll != NULL; ll = ll->next)
             {
+                char *status = NULL;
                 GDBusInterface *interface = G_DBUS_INTERFACE(ll->data);
-                const char *name = g_dbus_proxy_get_interface_name(G_DBUS_PROXY(interface));
-                g_print(" - %s", name);
+                const char *name =
+                    g_dbus_proxy_get_interface_name(G_DBUS_PROXY(interface));
+                GDBusProxy *proxy = G_DBUS_PROXY(interface);
+                GVariant *v = g_dbus_connection_call_sync (
+                                g_dbus_proxy_get_connection(proxy),
+                                g_dbus_proxy_get_name(proxy),
+                                g_dbus_proxy_get_object_path(proxy),
+                                "org.freedesktop.DBus.Properties",
+                                "Get",
+                                g_variant_new("(ss)", name, "Status"),
+                                G_VARIANT_TYPE("(v)"),
+                                G_DBUS_CALL_FLAGS_NONE,
+                                -1,
+                                NULL,
+                                &error);
+
+                if (v) {
+                    GVariant *vv = NULL;
+                    g_variant_get_child(v, 0, "v", &vv);
+                    g_variant_get(vv, "(s)", &status);
+                }
+
+                g_print(" - %s [ %s ]", name, status);
                 g_object_unref(ll->data);
             }
             g_list_free(ifaces);

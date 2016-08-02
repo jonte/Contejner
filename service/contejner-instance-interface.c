@@ -213,7 +213,24 @@ static GVariant *dbus_get_property (GDBusConnection *connection,
                              GError **error,
                              gpointer user_data)
 {
-    return NULL;
+    GVariant *v = NULL;
+    if (g_strcmp0(property_name, "Name")) {
+        switch (CONTEJNER_INSTANCE_STATUS_RUNNING) {
+            case CONTEJNER_INSTANCE_STATUS_RUNNING:
+                v = g_variant_new ("(s)", "RUNNING");
+                break;
+            case CONTEJNER_INSTANCE_STATUS_STOPPED:
+                v = g_variant_new ("(s)", "STOPPED");
+                break;
+            case CONTEJNER_INSTANCE_STATUS_CREATED:
+                v = g_variant_new ("(s)", "CREATED");
+                break;
+            default: g_warning ("Illegal status received");
+        }
+    } else {
+        g_error("Unknown D-Bus property: %s", property_name);
+    }
+    return v;
 }
 
 static gboolean dbus_set_property (GDBusConnection *connection,
@@ -300,7 +317,8 @@ static void status_changed(GObject *instance,
         CONTEJNER_INSTANCE_INTERFACE_GET_PRIVATE(self);
 
     GValue new_value = G_VALUE_INIT;
-    GVariant *variant = NULL;
+    GVariantBuilder *builder = g_variant_builder_new (G_VARIANT_TYPE_ARRAY);
+
     GError *error = NULL;
 
     g_value_init(&new_value, G_TYPE_INT);
@@ -308,13 +326,22 @@ static void status_changed(GObject *instance,
     ContejnerInstanceStatus status = g_value_get_int(&new_value);
     switch (status) {
         case CONTEJNER_INSTANCE_STATUS_RUNNING:
-            variant = g_variant_new("(s)", "RUNNING");
+            g_variant_builder_add (builder,
+                                 "{sv}",
+                                 "status",
+                                 g_variant_new_string ("RUNNING"));
             break;
         case CONTEJNER_INSTANCE_STATUS_STOPPED:
-            variant = g_variant_new("(s)", "STOPPED");
+            g_variant_builder_add (builder,
+                                   "{sv}",
+                                   "status",
+                                   g_variant_new_string ("STOPPED"));
             break;
         case CONTEJNER_INSTANCE_STATUS_CREATED:
-            variant = g_variant_new("(s)", "CREATED");
+            g_variant_builder_add (builder,
+                                   "{sv}",
+                                   "status",
+                                   g_variant_new_string ("CREATED"));
             break;
         default: g_warning ("Illegal status received");
     }
@@ -323,9 +350,12 @@ static void status_changed(GObject *instance,
         g_dbus_connection_emit_signal (priv->connection,
                                        NULL,
                                        priv->dbus_object_path,
-                                       priv->dbus_name,
-                                       "StatusChanged",
-                                       variant,
+                                       "org.freedesktop.DBus.Properties",
+                                       "status",
+                                       g_variant_new ("(sa{sv}as)",
+                                                      priv->dbus_name,
+                                                      builder,
+                                                      NULL),
                                        &error);
     if (!dbus_status) {
         g_warning("Failed to emit signal: %s", error->message);

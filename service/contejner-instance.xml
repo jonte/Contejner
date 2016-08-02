@@ -19,5 +19,7 @@
         <method name="Kill">
             <arg name="signal" direction="in" type="i"></arg>
         </method>
+
+        <property name="Status" type="s" access="read" />
   </interface>
 </node>
