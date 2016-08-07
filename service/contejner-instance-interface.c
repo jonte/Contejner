@@ -213,9 +213,17 @@ static GVariant *dbus_get_property (GDBusConnection *connection,
                              GError **error,
                              gpointer user_data)
 {
+    ContejnerInstanceInterface *self = user_data;
+    ContejnerInstanceInterfacePrivate *priv = CONTEJNER_INSTANCE_INTERFACE_GET_PRIVATE(self);
+    ContejnerInstanceStatus status;
+
+    g_object_get(G_OBJECT(priv->container),
+                 "status", &status,
+                 NULL);
+
     GVariant *v = NULL;
-    if (g_strcmp0(property_name, "Name")) {
-        switch (CONTEJNER_INSTANCE_STATUS_RUNNING) {
+    if (!g_strcmp0(property_name, "Status")) {
+        switch (status) {
             case CONTEJNER_INSTANCE_STATUS_RUNNING:
                 v = g_variant_new ("(s)", "RUNNING");
                 break;
