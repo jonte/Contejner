@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#define _GNU_SOURCE
+#include <sched.h>
+
 #include "contejner-instance-interface.h"
 #include <gio/gunixfdlist.h>
 #include "contejner-instance.xml.h"
@@ -222,6 +225,9 @@ static GVariant *dbus_get_property (GDBusConnection *connection,
                  NULL);
 
     GVariant *v = NULL;
+    int current_namespaces =
+        contejner_instance_get_unshared_namespaces(priv->container);
+
     if (!g_strcmp0(property_name, "Status")) {
         switch (status) {
             case CONTEJNER_INSTANCE_STATUS_RUNNING:
@@ -235,6 +241,18 @@ static GVariant *dbus_get_property (GDBusConnection *connection,
                 break;
             default: g_warning ("Illegal status received");
         }
+    } else if (!g_strcmp0(property_name, "MountNamespaceEnabled")) {
+        v = g_variant_new ("(b)", (current_namespaces & CLONE_NEWNS) > 0);
+    } else if (!g_strcmp0(property_name, "NetworkNamespaceEnabled")) {
+        v = g_variant_new ("(b)", (current_namespaces & CLONE_NEWNET) > 0);
+    } else if (!g_strcmp0(property_name, "IPCNamespaceEnabled")) {
+        v = g_variant_new ("(b)", (current_namespaces & CLONE_NEWIPC) > 0);
+    } else if (!g_strcmp0(property_name, "PIDNamespaceEnabled")) {
+        v = g_variant_new ("(b)", (current_namespaces & CLONE_NEWPID) > 0);
+    } else if (!g_strcmp0(property_name, "UTSNamespaceEnabled")) {
+        v = g_variant_new ("(b)", (current_namespaces & CLONE_NEWUTS) > 0);
+    } else if (!g_strcmp0(property_name, "UserNamespaceEnabled")) {
+        v = g_variant_new ("(b)", (current_namespaces & CLONE_NEWUSER) > 0);
     } else {
         g_error("Unknown D-Bus property: %s", property_name);
     }

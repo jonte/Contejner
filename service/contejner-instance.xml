@@ -21,5 +21,12 @@
         </method>
 
         <property name="Status" type="s" access="read" />
+        <property name="MountNamespaceEnabled" type="b" access="readwrite" />
+        <property name="NetworkNamespaceEnabled" type="b" access="readwrite" />
+        <property name="IPCNamespaceEnabled" type="b" access="readwrite" />
+        <property name="PIDNamespaceEnabled" type="b" access="readwrite" />
+        <property name="UTSNamespaceEnabled" type="b" access="readwrite" />
+        <property name="UserNamespaceEnabled" type="b" access="readwrite" />
+
   </interface>
 </node>

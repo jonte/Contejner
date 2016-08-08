@@ -66,6 +66,12 @@ gboolean contejner_instance_set_root(ContejnerInstance *instance,
 
 gboolean contejner_instance_kill(ContejnerInstance *instance, int signal);
 
+gboolean contejner_instance_enable_ns(ContejnerInstance *instance, int ns);
+
+gboolean contejner_instance_disable_ns(ContejnerInstance *instance, int ns);
+
+int contejner_instance_get_unshared_namespaces(ContejnerInstance *instance);
+
 G_END_DECLS
 
 #endif /* DBUS_SERVICE_INTERFACE_H */

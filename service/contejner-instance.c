@@ -37,7 +37,7 @@
 #define STDOUT_BUF_SZ 1024
 #define STDERR_BUF_SZ 1024
 
-/* List of namesapces to unshare */
+/* List of namepaces to unshare */
 #define DEFAULT_UNSHARED_NAMESPACES     \
     CLONE_NEWNET                \
     | CLONE_NEWIPC              \
@@ -388,4 +388,60 @@ gboolean contejner_instance_kill(ContejnerInstance *instance, int signal)
         g_debug("Tried to kill non-running container");
         return FALSE;
     }
+}
+
+gboolean contejner_instance_enable_ns(ContejnerInstance *instance, int ns)
+{
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
+    if (priv->status == CONTEJNER_INSTANCE_STATUS_RUNNING) {
+        g_debug("Container is already running. Not enabling new namespace");
+        return FALSE;
+    }
+
+    switch (ns) {
+        case CLONE_NEWNET:
+        case CLONE_NEWIPC:
+        case CLONE_NEWPID:
+        case CLONE_NEWUTS:
+        case CLONE_NEWNS:
+        case CLONE_NEWUSER:
+            priv->unshared_namespaces |= ns;
+        default:
+            g_error("Unknown namespace: %d", ns);
+    }
+
+    return TRUE;
+}
+
+gboolean contejner_instance_disable_ns(ContejnerInstance *instance, int ns)
+{
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
+    if (priv->status == CONTEJNER_INSTANCE_STATUS_RUNNING) {
+        g_debug("Container is already running. Not disabling namespace");
+        return FALSE;
+    }
+
+    switch (ns) {
+        case CLONE_NEWNET:
+        case CLONE_NEWIPC:
+        case CLONE_NEWPID:
+        case CLONE_NEWUTS:
+        case CLONE_NEWNS:
+        case CLONE_NEWUSER:
+            if (priv->unshared_namespaces & ns) {
+                priv->unshared_namespaces -= ns;
+            } else {
+                g_debug("Namespace %d is not enabled. Not disabling.", ns);
+            }
+        default:
+            g_error("Unknown namespace: %d", ns);
+    }
+
+    return TRUE;
+}
+
+int contejner_instance_get_unshared_namespaces(ContejnerInstance *instance)
+{
+    ContejnerInstancePrivate *priv = CONTEJNER_INSTANCE_GET_PRIVATE(instance);
+    return priv->unshared_namespaces;
 }
