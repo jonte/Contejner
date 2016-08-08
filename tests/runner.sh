@@ -40,8 +40,8 @@ export -f ASSERT ASSERT_STREQUAL
 
 # Start a new D-Bus
 eval `dbus-launch --sh-syntax`
-
-(G_MESSAGES_DEBUG=all ${SERVICE} &> contejner_output)&
+export G_MESSAGES_DEBUG=all
+(${SERVICE} > contejner_output)&
 SERVICE_PID=$!
 
 # Give the service a second to start up
